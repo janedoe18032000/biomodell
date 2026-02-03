@@ -3,77 +3,390 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Min AI-modell (TFJS)</title>
+    <title>Sentiment-analys med AI</title>
 
     <!-- TensorFlow.js -->
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
 
     <style>
-        body {
-            font-family: system-ui, sans-serif;
-            max-width: 600px;
-            margin: 2rem auto;
-            padding: 1rem;
-            background: #f9f9f9;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 700px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 2rem;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 0.95rem;
+        }
+
+        .input-section {
+            margin-bottom: 20px;
+        }
+
         textarea {
             width: 100%;
-            height: 100px;
-            padding: 10px;
+            min-height: 120px;
+            padding: 15px;
             font-size: 1rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            resize: vertical;
+            font-family: inherit;
+            transition: border-color 0.3s;
         }
+
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
         button {
-            padding: 12px 24px;
+            flex: 1;
+            padding: 15px 25px;
             font-size: 1rem;
-            margin-top: 0.5rem;
+            font-weight: 600;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: inherit;
         }
-        button:disabled {
-            opacity: 0.6;
+
+        #predictBtn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
         }
+
+        #predictBtn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        #predictBtn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        #clearBtn {
+            background: #f5f5f5;
+            color: #666;
+        }
+
+        #clearBtn:hover {
+            background: #e0e0e0;
+        }
+
+        .result-section {
+            background: #f9f9f9;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
         #result {
-            margin-top: 1.5rem;
+            font-size: 1.3rem;
             font-weight: bold;
-            font-size: 1.1rem;
+            text-align: center;
         }
-        #debug {
-            margin-top: 2rem;
-            background: #eef;
-            padding: 10px;
-            font-family: monospace;
+
+        .result-positive {
+            color: #10b981;
+        }
+
+        .result-negative {
+            color: #ef4444;
+        }
+
+        .result-neutral {
+            color: #6b7280;
+        }
+
+        .emoji {
+            font-size: 2rem;
+            margin-right: 10px;
+        }
+
+        .examples {
+            background: #f0f4ff;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        .examples h3 {
+            color: #667eea;
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .example-item {
+            background: white;
+            padding: 8px 12px;
+            margin: 5px 0;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-size: 0.9rem;
+        }
+
+        .example-item:hover {
+            background: #e0e7ff;
+        }
+
+        .debug-section {
+            margin-top: 20px;
+        }
+
+        .debug-toggle {
+            background: none;
+            border: 1px solid #ddd;
+            color: #666;
+            padding: 8px 15px;
             font-size: 0.85rem;
-            height: 200px;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        .debug-toggle:hover {
+            background: #f5f5f5;
+        }
+
+        #debug {
+            margin-top: 10px;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+            max-height: 300px;
             overflow-y: auto;
+            border-radius: 5px;
+            display: none;
+        }
+
+        #debug.show {
+            display: block;
+        }
+
+        .debug-line {
+            margin: 2px 0;
+            padding: 2px 0;
+        }
+
+        .debug-success {
+            color: #4ade80;
+        }
+
+        .debug-error {
+            color: #f87171;
+        }
+
+        .debug-warning {
+            color: #fbbf24;
+        }
+
+        .debug-info {
+            color: #60a5fa;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: #e0e0e0;
+            border-radius: 2px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .progress-bar.show {
+            display: block;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 25px;
+            }
+
+            h1 {
+                font-size: 1.5rem;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
         }
     </style>
 </head>
 
 <body>
 
-<h1>Testa min text-AI</h1>
-<p>Skriv t.ex. <em>“Jag är arg”</em> eller <em>“Maten var god”</em>.</p>
+<div class="container">
+    <h1>🤖 AI Sentiment-analys</h1>
+    <p class="subtitle">Analysera känslan i din text med maskininlärning</p>
 
-<textarea id="textInput" placeholder="Skriv text här..."></textarea><br>
-<button id="predictBtn" disabled>⏳ Laddar modell…</button>
+    <div class="progress-bar" id="progressBar">
+        <div class="progress-fill" id="progressFill"></div>
+    </div>
 
-<div id="result">Resultatet visas här…</div>
-<div id="debug"></div>
+    <div class="examples">
+        <h3>💡 Provexempel (klicka för att testa)</h3>
+        <div class="example-item" onclick="tryExample('Jag är så glad idag!')">
+            😊 "Jag är så glad idag!"
+        </div>
+        <div class="example-item" onclick="tryExample('Maten var fruktansvärd och servicen var hemsk')">
+            😠 "Maten var fruktansvärd och servicen var hemsk"
+        </div>
+        <div class="example-item" onclick="tryExample('Fantastisk film! Älskade varje minut av den.')">
+            🌟 "Fantastisk film! Älskade varje minut av den."
+        </div>
+        <div class="example-item" onclick="tryExample('Jag är besviken på produkten')">
+            😞 "Jag är besviken på produkten"
+        </div>
+    </div>
+
+    <div class="input-section">
+        <textarea 
+            id="textInput" 
+            placeholder="Skriv din text här... (svenska eller engelska)"
+            autofocus
+        ></textarea>
+    </div>
+
+    <div class="button-group">
+        <button id="predictBtn" disabled>
+            <span class="loading-spinner"></span>
+            Laddar modell...
+        </button>
+        <button id="clearBtn" onclick="clearInput()">Rensa</button>
+    </div>
+
+    <div class="result-section">
+        <div id="result">Skriv en text och tryck på "Analysera" 🔍</div>
+    </div>
+
+    <div class="debug-section">
+        <button class="debug-toggle" onclick="toggleDebug()">
+            🔧 Visa teknisk information
+        </button>
+        <div id="debug"></div>
+    </div>
+</div>
 
 <script>
 /* =========================
-   GLOBALT
+   GLOBALA VARIABLER
    ========================= */
 let model;
 let metadata;
+let wordIndex;
 const SEQUENCE_LENGTH = 256;
+let isModelLoaded = false;
 
 /* =========================
    DEBUG-LOGG
    ========================= */
-function log(msg) {
+function log(msg, type = 'info') {
     const box = document.getElementById("debug");
-    box.innerHTML += msg + "<br>";
+    const timestamp = new Date().toLocaleTimeString();
+    const colors = {
+        'success': 'debug-success',
+        'error': 'debug-error',
+        'warning': 'debug-warning',
+        'info': 'debug-info'
+    };
+    
+    const className = colors[type] || 'debug-info';
+    box.innerHTML += `<div class="debug-line ${className}">[${timestamp}] ${msg}</div>`;
     box.scrollTop = box.scrollHeight;
-    console.log(msg);
+    console.log(`[${type.toUpperCase()}] ${msg}`);
+}
+
+function toggleDebug() {
+    const debug = document.getElementById('debug');
+    debug.classList.toggle('show');
+}
+
+/* =========================
+   PROGRESS BAR
+   ========================= */
+function setProgress(percent) {
+    const progressBar = document.getElementById('progressBar');
+    const progressFill = document.getElementById('progressFill');
+    
+    if (percent > 0 && percent < 100) {
+        progressBar.classList.add('show');
+    } else {
+        progressBar.classList.remove('show');
+    }
+    
+    progressFill.style.width = percent + '%';
 }
 
 /* =========================
@@ -81,62 +394,117 @@ function log(msg) {
    ========================= */
 async function loadAssets() {
     try {
-        log("Hämtar metadata.json…");
+        setProgress(10);
+        log("🚀 Startar laddning av AI-modell...", 'info');
+        
+        // Ladda metadata
+        setProgress(30);
+        log("📥 Hämtar metadata.json...", 'info');
         const metaRes = await fetch("tfjs_model/metadata.json");
+        
+        if (!metaRes.ok) {
+            throw new Error(`HTTP ${metaRes.status}: Kunde inte hitta metadata.json`);
+        }
+        
         metadata = await metaRes.json();
+        log(`✓ Metadata laddad (keys: ${Object.keys(metadata).join(', ')})`, 'success');
 
-        log("Metadata root-keys: " + Object.keys(metadata));
+        // Hitta word_index
+        setProgress(50);
+        wordIndex = metadata.word_index || 
+                    metadata.tokenizer?.word_index || 
+                    metadata.config?.word_index;
 
-        log("Hämtar model.json…");
+        if (!wordIndex) {
+            throw new Error(
+                "❌ word_index saknas i metadata.json!\n" +
+                "Kontrollera att du använder den uppdaterade Colab notebook."
+            );
+        }
+
+        log(`✓ word_index hittad med ${Object.keys(wordIndex).length} ord`, 'success');
+        log(`📝 Exempel: ${Object.keys(wordIndex).slice(0, 5).join(', ')}`, 'info');
+
+        // Ladda modell
+        setProgress(70);
+        log("📥 Hämtar TensorFlow.js modell...", 'info');
         model = await tf.loadLayersModel("tfjs_model/model.json");
-
-        // Aktivera knapp
-        const btn = document.getElementById("predictBtn");
-        btn.disabled = false;
-        btn.innerText = "Analysera text";
+        log(`✓ Modell laddad (input shape: ${model.inputs[0].shape})`, 'success');
 
         // Värm upp modellen
-        tf.tidy(() => model.predict(tf.zeros([1, SEQUENCE_LENGTH])));
+        setProgress(90);
+        log("🔥 Värmer upp modellen...", 'info');
+        tf.tidy(() => {
+            const warmup = model.predict(tf.zeros([1, SEQUENCE_LENGTH]));
+            warmup.dispose();
+        });
 
-        log("✅ Modell laddad");
-        log("Input shape: " + model.inputs[0].shape);
+        // Aktivera knapp
+        setProgress(100);
+        const btn = document.getElementById("predictBtn");
+        btn.disabled = false;
+        btn.innerHTML = "🔍 Analysera sentiment";
+        
+        isModelLoaded = true;
+        log("✅ Allt klart! Modellen är redo att använda.", 'success');
+        
+        setTimeout(() => setProgress(0), 500);
+
     } catch (err) {
-        log("❌ FEL vid init: " + err.message);
+        setProgress(0);
+        log(`❌ FEL vid laddning: ${err.message}`, 'error');
+        
+        const result = document.getElementById("result");
+        result.innerHTML = `
+            <div style="color: #ef4444; text-align: left;">
+                <strong>⚠️ Fel vid laddning:</strong><br>
+                ${err.message}<br><br>
+                <small>Kontrollera att tfjs_model/ mappen innehåller model.json och metadata.json</small>
+            </div>
+        `;
+        
+        const btn = document.getElementById("predictBtn");
+        btn.innerHTML = "❌ Laddning misslyckades";
     }
 }
 
 /* =========================
-   TOKENIZER (ROBUST)
+   TOKENIZER
    ========================= */
 function tokenize(text) {
-    const words = text
-        .toLowerCase()
-        .replace(/[.,!?;:]/g, "")
-        .split(/\s+/);
-
-    // 🔒 FUNKAR OAVSETT METADATA-STRUKTUR
-    const wordIndex =
-        metadata.word_index ||
-        metadata.tokenizer?.word_index ||
-        metadata.config?.word_index;
-
     if (!wordIndex) {
-        throw new Error(
-            "word_index hittades inte i metadata.json. Root-keys: " +
-            Object.keys(metadata)
-        );
+        throw new Error("word_index är inte laddad!");
     }
 
+    // Rensa och dela upp text
+    const words = text
+        .toLowerCase()
+        .replace(/[.,!?;:"']/g, "")
+        .split(/\s+/)
+        .filter(w => w.length > 0);
+
+    log(`📝 Antal ord i texten: ${words.length}`, 'info');
+
     const PAD_INDEX = 0;
-    const OOV_INDEX = 1;
+    const OOV_INDEX = 1; // Out-of-vocabulary
 
-    const sequence = words.map(w => wordIndex[w] ?? OOV_INDEX);
+    // Konvertera ord till index
+    const sequence = words.map(w => {
+        const index = wordIndex[w];
+        if (index === undefined) {
+            log(`⚠️ Okänt ord: "${w}" → OOV`, 'warning');
+            return OOV_INDEX;
+        }
+        return index;
+    });
 
+    // Padda till fast längd
     const padded = new Array(SEQUENCE_LENGTH).fill(PAD_INDEX);
     for (let i = 0; i < Math.min(sequence.length, SEQUENCE_LENGTH); i++) {
         padded[i] = sequence[i];
     }
 
+    log(`🔢 Sekvens (första 10): [${padded.slice(0, 10).join(', ')}]`, 'info');
     return padded;
 }
 
@@ -144,49 +512,117 @@ function tokenize(text) {
    PREDIKTION
    ========================= */
 function runPrediction() {
+    if (!isModelLoaded) {
+        log("⚠️ Modellen är inte laddad ännu", 'warning');
+        return;
+    }
+
     const text = document.getElementById("textInput").value.trim();
+    
     if (!text) {
-        log("Ingen text att analysera.");
+        log("⚠️ Ingen text att analysera", 'warning');
+        document.getElementById("result").innerHTML = 
+            '<span style="color: #6b7280;">Skriv en text först! 📝</span>';
         return;
     }
 
     try {
-        log(`Analyserar: "${text}"`);
+        log(`\n${'='.repeat(60)}`, 'info');
+        log(`🔍 ANALYSERAR: "${text.substring(0, 50)}${text.length > 50 ? '...' : ''}"`, 'info');
+        log(`${'='.repeat(60)}`, 'info');
 
+        // Tokenisera
         const input = tokenize(text);
-        log("Tokeniserad sekvens (första 10): " + input.slice(0, 10));
 
+        // Skapa tensor och förutspå
         const tensor = tf.tensor2d([input], [1, SEQUENCE_LENGTH]);
         const prediction = model.predict(tensor);
         const score = prediction.dataSync()[0];
 
+        // Städa upp
         tensor.dispose();
         prediction.dispose();
 
+        // Beräkna resultat
         const percent = (score * 100).toFixed(1);
         const result = document.getElementById("result");
 
-        if (score > 0.5) {
-            result.innerText = `Positivt (${percent}%) ✅`;
-            result.style.color = "green";
+        log(`📊 Råvärde: ${score.toFixed(4)}`, 'info');
+        log(`📊 Procent: ${percent}%`, 'info');
+
+        let emoji, label, className;
+        
+        if (score > 0.7) {
+            emoji = "😊";
+            label = "Mycket Positivt";
+            className = "result-positive";
+            log(`✅ Resultat: MYCKET POSITIVT`, 'success');
+        } else if (score > 0.5) {
+            emoji = "🙂";
+            label = "Positivt";
+            className = "result-positive";
+            log(`✅ Resultat: POSITIVT`, 'success');
+        } else if (score > 0.3) {
+            emoji = "😐";
+            label = "Neutralt";
+            className = "result-neutral";
+            log(`➡️ Resultat: NEUTRALT`, 'info');
         } else {
-            result.innerText = `Negativt / neutralt (${percent}%) ❌`;
-            result.style.color = "#d00";
+            emoji = "😞";
+            label = "Negativt";
+            className = "result-negative";
+            log(`❌ Resultat: NEGATIVT`, 'error');
         }
 
-        log("Råvärde: " + score);
+        result.innerHTML = `
+            <div class="${className}">
+                <span class="emoji">${emoji}</span>
+                <span>${label} (${percent}%)</span>
+            </div>
+        `;
+
     } catch (e) {
-        log("❌ Fel vid analys: " + e.message);
+        log(`❌ Fel vid analys: ${e.message}`, 'error');
+        document.getElementById("result").innerHTML = 
+            `<div style="color: #ef4444;">⚠️ Fel: ${e.message}</div>`;
     }
 }
 
 /* =========================
+   HJÄLPFUNKTIONER
+   ========================= */
+function clearInput() {
+    document.getElementById("textInput").value = "";
+    document.getElementById("result").innerHTML = 
+        '<span style="color: #6b7280;">Skriv en text och tryck på "Analysera" 🔍</span>';
+    log("🧹 Rensade input och resultat", 'info');
+}
+
+function tryExample(text) {
+    document.getElementById("textInput").value = text;
+    log(`💡 Valde exempel: "${text}"`, 'info');
+    if (isModelLoaded) {
+        runPrediction();
+    }
+}
+
+/* =========================
+   EVENT LISTENERS
+   ========================= */
+document.getElementById("predictBtn").addEventListener("click", runPrediction);
+
+// Enter-tangent för att analysera (Ctrl+Enter i textarea)
+document.getElementById("textInput").addEventListener("keydown", function(e) {
+    if (e.key === "Enter" && e.ctrlKey && isModelLoaded) {
+        e.preventDefault();
+        runPrediction();
+    }
+});
+
+/* =========================
    INIT
    ========================= */
-document
-    .getElementById("predictBtn")
-    .addEventListener("click", runPrediction);
-
+log("🎬 Startar applikation...", 'info');
 loadAssets();
 </script>
 
