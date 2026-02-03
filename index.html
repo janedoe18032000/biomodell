@@ -3,58 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Min AI-Modell (TFJS)</title>
+    <title>Min AI-modell (TFJS)</title>
 
     <!-- TensorFlow.js -->
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
 
     <style>
         body {
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: system-ui, sans-serif;
             max-width: 600px;
             margin: 2rem auto;
             padding: 1rem;
-            background-color: #f9f9f9;
+            background: #f9f9f9;
         }
-
-        h1 {
-            color: #333;
-        }
-
         textarea {
             width: 100%;
             height: 100px;
             padding: 10px;
             font-size: 1rem;
-            box-sizing: border-box;
         }
-
         button {
             padding: 12px 24px;
             font-size: 1rem;
-            cursor: pointer;
             margin-top: 0.5rem;
         }
-
-        button:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-
         #result {
             margin-top: 1.5rem;
             font-weight: bold;
             font-size: 1.1rem;
         }
-
         #debug {
             margin-top: 2rem;
-            padding: 10px;
             background: #eef;
-            border: 1px solid #ccd;
+            padding: 10px;
             font-family: monospace;
             font-size: 0.85rem;
-            height: 160px;
+            height: 180px;
             overflow-y: auto;
         }
     </style>
@@ -63,7 +47,7 @@
 <body>
 
 <h1>Testa min text-AI</h1>
-<p>Skriv en mening, t.ex. <em>“maten var god”</em> eller <em>“jag är arg”</em>.</p>
+<p>Skriv t.ex. <em>“jag är arg”</em> eller <em>“maten var god”</em></p>
 
 <textarea id="textInput" placeholder="Skriv text här..."></textarea><br>
 <button id="predictBtn" disabled>⏳ Laddar modell…</button>
@@ -72,16 +56,16 @@
 <div id="debug"></div>
 
 <script>
-/* ==========================
+/* =========================
    Globala variabler
-   ========================== */
+   ========================= */
 let model;
 let metadata;
 const SEQUENCE_LENGTH = 256;
 
-/* ==========================
-   Loggfunktion
-   ========================== */
+/* =========================
+   Logg
+   ========================= */
 function log(msg) {
     const box = document.getElementById("debug");
     box.innerHTML += msg + "<br>";
@@ -89,9 +73,9 @@ function log(msg) {
     console.log(msg);
 }
 
-/* ==========================
+/* =========================
    Ladda modell + metadata
-   ========================== */
+   ========================= */
 async function loadAssets() {
     try {
         log("Hämtar metadata.json…");
@@ -101,33 +85,35 @@ async function loadAssets() {
         log("Hämtar model.json…");
         model = await tf.loadLayersModel("tfjs_model/model.json");
 
-        // Aktivera knapp
-        const btn = document.getElementById("predictBtn");
-        btn.disabled = false;
-        btn.innerText = "Analysera text";
+        document.getElementById("predictBtn").disabled = false;
+        document.getElementById("predictBtn").innerText = "Analysera text";
 
         // Värm upp modellen
         tf.tidy(() => model.predict(tf.zeros([1, SEQUENCE_LENGTH])));
 
         log("✅ Modell laddad");
-        log("Input shape: " + model.inputs[0].shape);
+        log("Antal ord i tokenizer: " +
+            Object.keys(metadata.tokenizer.word_index).length);
     } catch (err) {
         log("❌ FEL: " + err.message);
     }
 }
 
-/* ==========================
-   Tokenizer
-   ========================== */
+/* =========================
+   TOKENIZER
+   (EXAKT anpassad till DIN metadata)
+   ========================= */
 function tokenize(text) {
     const words = text
         .toLowerCase()
         .replace(/[.,!?;:]/g, "")
         .split(/\s+/);
 
-    const wordIndex = metadata.word_index;
-    const OOV_INDEX = 1;
+    // 🔴 VIKTIG RAD – DIN metadata
+    const wordIndex = metadata.tokenizer.word_index;
+
     const PAD_INDEX = 0;
+    const OOV_INDEX = 1;
 
     const sequence = words.map(w => wordIndex[w] || OOV_INDEX);
 
@@ -139,10 +125,10 @@ function tokenize(text) {
     return padded;
 }
 
-/* ==========================
+/* =========================
    Prediktion
-   ========================== */
-async function runPrediction() {
+   ========================= */
+function runPrediction() {
     const text = document.getElementById("textInput").value.trim();
     if (!text) {
         log("Ingen text att analysera.");
@@ -172,16 +158,19 @@ async function runPrediction() {
             result.style.color = "#d00";
         }
 
-        log(`Resultat: ${score}`);
+        log("Råvärde: " + score);
     } catch (e) {
-        log("❌ Fel vid prediktion: " + e.message);
+        log("❌ Fel vid analys: " + e.message);
     }
 }
 
-/* ==========================
+/* =========================
    Init
-   ========================== */
-document.getElementById("predictBtn").addEventListener("click", runPrediction);
+   ========================= */
+document
+    .getElementById("predictBtn")
+    .addEventListener("click", runPrediction);
+
 loadAssets();
 </script>
 
