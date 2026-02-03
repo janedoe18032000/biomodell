@@ -27,6 +27,9 @@
             font-size: 1rem;
             margin-top: 0.5rem;
         }
+        button:disabled {
+            opacity: 0.6;
+        }
         #result {
             margin-top: 1.5rem;
             font-weight: bold;
@@ -38,7 +41,7 @@
             padding: 10px;
             font-family: monospace;
             font-size: 0.85rem;
-            height: 180px;
+            height: 200px;
             overflow-y: auto;
         }
     </style>
@@ -47,7 +50,7 @@
 <body>
 
 <h1>Testa min text-AI</h1>
-<p>Skriv t.ex. <em>“jag är arg”</em> eller <em>“maten var god”</em></p>
+<p>Skriv t.ex. <em>“Jag är arg”</em> eller <em>“Maten var god”</em>.</p>
 
 <textarea id="textInput" placeholder="Skriv text här..."></textarea><br>
 <button id="predictBtn" disabled>⏳ Laddar modell…</button>
@@ -57,14 +60,14 @@
 
 <script>
 /* =========================
-   Globala variabler
+   GLOBALT
    ========================= */
 let model;
 let metadata;
 const SEQUENCE_LENGTH = 256;
 
 /* =========================
-   Logg
+   DEBUG-LOGG
    ========================= */
 function log(msg) {
     const box = document.getElementById("debug");
@@ -74,7 +77,7 @@ function log(msg) {
 }
 
 /* =========================
-   Ladda modell + metadata
+   LADDA MODELL + METADATA
    ========================= */
 async function loadAssets() {
     try {
@@ -82,26 +85,28 @@ async function loadAssets() {
         const metaRes = await fetch("tfjs_model/metadata.json");
         metadata = await metaRes.json();
 
+        log("Metadata root-keys: " + Object.keys(metadata));
+
         log("Hämtar model.json…");
         model = await tf.loadLayersModel("tfjs_model/model.json");
 
-        document.getElementById("predictBtn").disabled = false;
-        document.getElementById("predictBtn").innerText = "Analysera text";
+        // Aktivera knapp
+        const btn = document.getElementById("predictBtn");
+        btn.disabled = false;
+        btn.innerText = "Analysera text";
 
         // Värm upp modellen
         tf.tidy(() => model.predict(tf.zeros([1, SEQUENCE_LENGTH])));
 
         log("✅ Modell laddad");
-        log("Antal ord i tokenizer: " +
-            Object.keys(metadata.tokenizer.word_index).length);
+        log("Input shape: " + model.inputs[0].shape);
     } catch (err) {
-        log("❌ FEL: " + err.message);
+        log("❌ FEL vid init: " + err.message);
     }
 }
 
 /* =========================
-   TOKENIZER
-   (EXAKT anpassad till DIN metadata)
+   TOKENIZER (ROBUST)
    ========================= */
 function tokenize(text) {
     const words = text
@@ -109,13 +114,23 @@ function tokenize(text) {
         .replace(/[.,!?;:]/g, "")
         .split(/\s+/);
 
-    // 🔴 VIKTIG RAD – DIN metadata
-    const wordIndex = metadata.tokenizer.word_index;
+    // 🔒 FUNKAR OAVSETT METADATA-STRUKTUR
+    const wordIndex =
+        metadata.word_index ||
+        metadata.tokenizer?.word_index ||
+        metadata.config?.word_index;
+
+    if (!wordIndex) {
+        throw new Error(
+            "word_index hittades inte i metadata.json. Root-keys: " +
+            Object.keys(metadata)
+        );
+    }
 
     const PAD_INDEX = 0;
     const OOV_INDEX = 1;
 
-    const sequence = words.map(w => wordIndex[w] || OOV_INDEX);
+    const sequence = words.map(w => wordIndex[w] ?? OOV_INDEX);
 
     const padded = new Array(SEQUENCE_LENGTH).fill(PAD_INDEX);
     for (let i = 0; i < Math.min(sequence.length, SEQUENCE_LENGTH); i++) {
@@ -126,7 +141,7 @@ function tokenize(text) {
 }
 
 /* =========================
-   Prediktion
+   PREDIKTION
    ========================= */
 function runPrediction() {
     const text = document.getElementById("textInput").value.trim();
@@ -139,8 +154,9 @@ function runPrediction() {
         log(`Analyserar: "${text}"`);
 
         const input = tokenize(text);
-        const tensor = tf.tensor2d([input], [1, SEQUENCE_LENGTH]);
+        log("Tokeniserad sekvens (första 10): " + input.slice(0, 10));
 
+        const tensor = tf.tensor2d([input], [1, SEQUENCE_LENGTH]);
         const prediction = model.predict(tensor);
         const score = prediction.dataSync()[0];
 
@@ -165,7 +181,7 @@ function runPrediction() {
 }
 
 /* =========================
-   Init
+   INIT
    ========================= */
 document
     .getElementById("predictBtn")
